@@ -1,4 +1,4 @@
-name: 'Infrastructure and Application Deployment with Tf'
+name: 'Infrastructure and Application Deployment'
 
 on:
   push:
@@ -113,8 +113,8 @@ jobs:
         WEBAPP_NAME=$(terraform output -raw web_app_name)
         echo "AZURE_WEBAPP_NAME=$WEBAPP_NAME" >> $GITHUB_ENV
         
-        KV_URI=$(terraform output -raw key_vault_uri)
-        echo "KEY_VAULT_URI=$KV_URI" >> $GITHUB_ENV
+        KV_NAME=$(terraform output -raw key_vault_name)
+        echo "KEY_VAULT_NAME=$KV_NAME" >> $GITHUB_ENV
       working-directory: ${{ env.WORKING_DIR }}
 
     - name: Setup .NET
@@ -143,8 +143,8 @@ jobs:
     - name: Get Connection Strings
       if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
       run: |
-        CATALOG_CONN=$(az keyvault secret show --vault-uri ${{ env.KEY_VAULT_URI }} --name "CatalogConnectionString" --query "value" -o tsv)
-        IDENTITY_CONN=$(az keyvault secret show --vault-uri ${{ env.KEY_VAULT_URI }} --name "IdentityConnectionString" --query "value" -o tsv)
+        CATALOG_CONN=$(az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name "CatalogConnectionString" --query "value" -o tsv)
+        IDENTITY_CONN=$(az keyvault secret show --vault-name ${{ env.KEY_VAULT_NAME }} --name "IdentityConnectionString" --query "value" -o tsv)
         
         # Create production settings for Web App
         cat << EOF > ./publish/web/appsettings.Production.json
