@@ -11,7 +11,8 @@ on:
       - main
     paths:
       - 'infra-tf/**'
-
+  workflow_dispatch: # Add this to allow manual triggering
+  
 env:
   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
   ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
