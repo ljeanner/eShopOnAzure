@@ -263,3 +263,7 @@ pub/
 
 # Terraform lock files
 .terraform.lock.hcl
+infra-tf/.terraform/providers/registry.terraform.io/hashicorp/azurerm/3.117.1/linux_amd64/LICENSE.txt
+infra-tf/.terraform/providers/registry.terraform.io/hashicorp/azurerm/3.117.1/linux_amd64/terraform-provider-azurerm_v3.117.1_x5
+infra-tf/.terraform/providers/registry.terraform.io/hashicorp/random/3.7.1/linux_amd64/LICENSE.txt
+infra-tf/.terraform/providers/registry.terraform.io/hashicorp/random/3.7.1/linux_amd64/terraform-provider-random_v3.7.1_x5
