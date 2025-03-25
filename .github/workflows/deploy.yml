@@ -1,0 +1,86 @@
+name: 'Build and Deploy eShopOnAzure'
+
+on:
+  workflow_run:
+    workflows: ['Terraform CI/CD']
+    types:
+      - completed
+    branches:
+      - main
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AZURE_WEBAPP_NAME: ''  # Will be set during workflow
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        include-prerelease: true
+
+    - name: Build
+      run: dotnet build ./eShopOnWeb.sln --configuration Release
+
+    - name: Test
+      run: dotnet test ./eShopOnWeb.sln --configuration Release --no-build
+
+    - name: Publish
+      run: dotnet publish ./eShopOnWeb.sln --configuration Release --no-build --output ./publish
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        enable-AzPSSession: false
+
+    - name: Get Resource Group and App Name
+      run: |
+        RG_NAME=$(az group list --query "[?contains(name, 'rg-application')].name" -o tsv)
+        echo "RESOURCE_GROUP=$RG_NAME" >> $GITHUB_ENV
+        
+        WEBAPP_NAME=$(az webapp list -g $RG_NAME --query "[0].name" -o tsv)
+        echo "AZURE_WEBAPP_NAME=$WEBAPP_NAME" >> $GITHUB_ENV
+
+    - name: Get Connection Strings
+      run: |
+        # Get Key Vault name
+        KV_NAME=$(az keyvault list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
+        
+        # Get connection strings from Key Vault
+        CATALOG_CONN=$(az keyvault secret show --vault-name $KV_NAME --name "CatalogConnectionString" --query "value" -o tsv)
+        IDENTITY_CONN=$(az keyvault secret show --vault-name $KV_NAME --name "IdentityConnectionString" --query "value" -o tsv)
+        
+        # Create publish profile with connection strings
+        cat << EOF > ./publish/appsettings.Production.json
+        {
+          "ConnectionStrings": {
+            "CatalogConnection": "$CATALOG_CONN",
+            "IdentityConnection": "$IDENTITY_CONN"
+          }
+        }
+        EOF
+
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        package: ./publish
