@@ -1,4 +1,4 @@
-name: 'Build and Deploy eShopOnAzure'
+name: 'Build and Deploy eShopOnWeb'
 
 on:
   workflow_run:
@@ -13,7 +13,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write
+  id-token: write # Required for OIDC authentication
 
 env:
   AZURE_WEBAPP_NAME: ''  # Will be set during workflow
@@ -41,8 +41,11 @@ jobs:
     - name: Test
       run: dotnet test ./eShopOnWeb.sln --configuration Release --no-build
 
-    - name: Publish
-      run: dotnet publish ./eShopOnWeb.sln --configuration Release --no-build --output ./publish
+    - name: Publish Web App
+      run: dotnet publish ./src/Web/Web.csproj --configuration Release --no-build --output ./publish/web
+
+    - name: Publish Public API
+      run: dotnet publish ./src/PublicApi/PublicApi.csproj --configuration Release --no-build --output ./publish/api
 
     - name: Azure Login
       uses: azure/login@v1
@@ -69,8 +72,8 @@ jobs:
         CATALOG_CONN=$(az keyvault secret show --vault-name $KV_NAME --name "CatalogConnectionString" --query "value" -o tsv)
         IDENTITY_CONN=$(az keyvault secret show --vault-name $KV_NAME --name "IdentityConnectionString" --query "value" -o tsv)
         
-        # Create publish profile with connection strings
-        cat << EOF > ./publish/appsettings.Production.json
+        # Create publish profile with connection strings for Web App
+        cat << EOF > ./publish/web/appsettings.Production.json
         {
           "ConnectionStrings": {
             "CatalogConnection": "$CATALOG_CONN",
@@ -79,8 +82,24 @@ jobs:
         }
         EOF
 
-    - name: Deploy to Azure Web App
+        # Create publish profile with connection strings for API
+        cat << EOF > ./publish/api/appsettings.Production.json
+        {
+          "ConnectionStrings": {
+            "CatalogConnection": "$CATALOG_CONN",
+            "IdentityConnection": "$IDENTITY_CONN"
+          }
+        }
+        EOF
+
+    - name: Deploy Web App
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        package: ./publish
+        package: ./publish/web
+
+    - name: Deploy API
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}-api
+        package: ./publish/api
