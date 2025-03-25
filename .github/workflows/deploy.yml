@@ -1,50 +1,38 @@
-name: 'Build and Deploy eShopOnWeb'
+name: 'Infrastructure and Application Deployment with Tf'
 
 on:
-  workflow_run:
-    workflows: ['Terraform CI/CD']
-    types:
-      - completed
-    branches:
-      - main
+  push:
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write # Required for OIDC authentication
+  pull-requests: write
+  id-token: write
 
 env:
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_USE_OIDC: true
+  WORKING_DIR: ./infra-tf
   DOTNET_VERSION: '8.0.x'
+  TF_VAR_sql_admin_username: ${{ secrets.SQL_ADMIN_USERNAME }}
+  TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
+  TF_VAR_app_user_password: ${{ secrets.APP_USER_PASSWORD }}
+  TF_VAR_azure_ad_admin_username: ${{ secrets.AZURE_AD_ADMIN_USERNAME }}
+  TF_VAR_azure_ad_admin_object_id: ${{ secrets.AZURE_AD_ADMIN_OBJECT_ID }}
 
 jobs:
-  build-and-deploy:
+  terraform:
+    name: 'Deploy Infrastructure and Application'
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' || 
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
-    
+
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-        include-prerelease: true
-
-    - name: Build
-      run: dotnet build ./eShopOnWeb.sln --configuration Release
-
-    - name: Test
-      run: dotnet test ./eShopOnWeb.sln --configuration Release --no-build
-
-    - name: Publish Web App
-      run: dotnet publish ./src/Web/Web.csproj --configuration Release --no-build --output ./publish/web
-
-    - name: Publish Public API
-      run: dotnet publish ./src/PublicApi/PublicApi.csproj --configuration Release --no-build --output ./publish/api
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Azure Login
       uses: azure/login@v1
@@ -60,32 +48,105 @@ jobs:
         terraform_version: '1.5.7'
 
     - name: Terraform Init
+      id: init
       run: terraform init
-      working-directory: ./infra-tf
+      working-directory: ${{ env.WORKING_DIR }}
 
-    - name: Get Terraform Outputs
+    - name: Terraform Format
+      id: fmt
+      run: terraform fmt -check
+      working-directory: ${{ env.WORKING_DIR }}
+      continue-on-error: true
+
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate
+      working-directory: ${{ env.WORKING_DIR }}
+
+    - name: Terraform Plan
+      id: plan
+      run: terraform plan -no-color
+      working-directory: ${{ env.WORKING_DIR }}
+      if: github.event_name == 'pull_request'
+      continue-on-error: true
+
+    - name: Update Pull Request
+      uses: actions/github-script@v6
+      if: github.event_name == 'pull_request'
+      env:
+        PLAN: "${{ steps.plan.outputs.stdout }}"
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+          #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+          #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+          #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+
+          <details><summary>Show Plan</summary>
+
+          \`\`\`terraform\n
+          ${process.env.PLAN}
+          \`\`\`
+
+          </details>`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          })
+
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      run: terraform apply -auto-approve
+      working-directory: ${{ env.WORKING_DIR }}
+
+    - name: Get Infrastructure Outputs
       id: terraform
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
       run: |
-        # Get resource group name from Terraform output
         RG_NAME=$(terraform output -raw resource_group_name)
         echo "RESOURCE_GROUP=$RG_NAME" >> $GITHUB_ENV
         
-        # Get web app name from Terraform output
         WEBAPP_NAME=$(terraform output -raw web_app_name)
         echo "AZURE_WEBAPP_NAME=$WEBAPP_NAME" >> $GITHUB_ENV
         
-        # Get Key Vault URI from Terraform output
         KV_URI=$(terraform output -raw key_vault_uri)
         echo "KEY_VAULT_URI=$KV_URI" >> $GITHUB_ENV
-      working-directory: ./infra-tf
+      working-directory: ${{ env.WORKING_DIR }}
+
+    - name: Setup .NET
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        include-prerelease: true
+
+    - name: Build
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      run: dotnet build ./eShopOnWeb.sln --configuration Release
+
+    - name: Test
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      run: dotnet test ./eShopOnWeb.sln --configuration Release --no-build
+
+    - name: Publish Web App
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      run: dotnet publish ./src/Web/Web.csproj --configuration Release --no-build --output ./publish/web
+
+    - name: Publish Public API
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      run: dotnet publish ./src/PublicApi/PublicApi.csproj --configuration Release --no-build --output ./publish/api
 
     - name: Get Connection Strings
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
       run: |
-        # Get connection strings from Key Vault using the URI from Terraform output
         CATALOG_CONN=$(az keyvault secret show --vault-uri ${{ env.KEY_VAULT_URI }} --name "CatalogConnectionString" --query "value" -o tsv)
         IDENTITY_CONN=$(az keyvault secret show --vault-uri ${{ env.KEY_VAULT_URI }} --name "IdentityConnectionString" --query "value" -o tsv)
         
-        # Create publish profile with connection strings for Web App
+        # Create production settings for Web App
         cat << EOF > ./publish/web/appsettings.Production.json
         {
           "ConnectionStrings": {
@@ -94,8 +155,8 @@ jobs:
           }
         }
         EOF
-
-        # Create publish profile with connection strings for API
+        
+        # Create production settings for API
         cat << EOF > ./publish/api/appsettings.Production.json
         {
           "ConnectionStrings": {
@@ -106,12 +167,14 @@ jobs:
         EOF
 
     - name: Deploy Web App
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         package: ./publish/web
 
     - name: Deploy API
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}-api
