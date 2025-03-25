@@ -18,6 +18,11 @@ output "key_vault_uri" {
   value       = azurerm_key_vault.kv.vault_uri
 }
 
+output "key_vault_name" {
+  description = "The name of the Key Vault"
+  value       = azurerm_key_vault.kv.name
+}
+
 output "catalog_db_name" {
   description = "The name of the catalog database"
   value       = azurerm_mssql_database.catalog.name

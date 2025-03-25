@@ -36,15 +36,41 @@ resource "azurerm_key_vault" "kv" {
   }
 }
 
-# Store SQL connection strings in Key Vault
+# Store SQL admin credentials in Key Vault
+resource "azurerm_key_vault_secret" "sql_admin_username" {
+  name         = "SqlAdminUsername"
+  value        = var.sql_admin_username
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
+resource "azurerm_key_vault_secret" "sql_admin_password" {
+  name         = "SqlAdminPassword"
+  value        = var.sql_admin_password
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
+# Store app user credentials in Key Vault
+resource "azurerm_key_vault_secret" "app_user_name" {
+  name         = "AppUserName"
+  value        = var.app_user_name
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
+resource "azurerm_key_vault_secret" "app_user_password" {
+  name         = "AppUserPassword"
+  value        = var.app_user_password
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
+# Store connection strings in Key Vault
 resource "azurerm_key_vault_secret" "catalog_connection" {
   name         = "CatalogConnectionString"
-  value        = "Server=tcp:${azurerm_mssql_server.catalog.fully_qualified_domain_name},1433;Database=${azurerm_mssql_database.catalog.name};User ID=${var.sql_admin_username};Password=${var.sql_admin_password};Encrypt=true;Connection Timeout=30;"
+  value        = "Server=tcp:${azurerm_mssql_server.catalog.fully_qualified_domain_name},1433;Database=${azurerm_mssql_database.catalog.name};User ID=${var.app_user_name};Password=${var.app_user_password};Encrypt=true;Connection Timeout=30;"
   key_vault_id = azurerm_key_vault.kv.id
 }
 
 resource "azurerm_key_vault_secret" "identity_connection" {
   name         = "IdentityConnectionString"
-  value        = "Server=tcp:${azurerm_mssql_server.identity.fully_qualified_domain_name},1433;Database=${azurerm_mssql_database.identity.name};User ID=${var.sql_admin_username};Password=${var.sql_admin_password};Encrypt=true;Connection Timeout=30;"
+  value        = "Server=tcp:${azurerm_mssql_server.identity.fully_qualified_domain_name},1433;Database=${azurerm_mssql_database.identity.name};User ID=${var.app_user_name};Password=${var.app_user_password};Encrypt=true;Connection Timeout=30;"
   key_vault_id = azurerm_key_vault.kv.id
 }
