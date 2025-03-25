@@ -2,13 +2,33 @@
 
 This guide explains how to set up Azure credentials and GitHub Actions for Terraform deployments.
 
+## Introduction
+
+This infrastructure as code (IaC) project uses Terraform to deploy a complete Azure environment including:
+
+- **Windows App Service**: Hosts a .NET web application with Application Insights integration
+- **SQL Databases**: Two separate databases for Catalog and Identity data
+- **Key Vault**: Securely stores connection strings and secrets
+- **Application Insights**: Provides monitoring and telemetry
+- **Resource Group**: Contains and organizes all resources
+- **Managed Identities**: System-assigned identities for secure authentication
+
 ## 1. Azure Configuration for Terraform
 
-To use Terraform with Azure in our workflows, we need the following credentials:
-- `AZURE_CLIENT_ID`
-- `AZURE_CLIENT_SECRET`
-- `AZURE_SUBSCRIPTION_ID`
-- `AZURE_TENANT_ID`
+### Login to Azure
+
+First, authenticate with Azure using the Azure CLI:
+
+```bash
+# Login to Azure
+az login
+
+# Verify your login and list subscriptions
+az account list --output table
+
+# Set your subscription (if you have multiple)
+az account set --subscription "<SUBSCRIPTION_NAME_OR_ID>"
+```
 
 ### Get Azure Subscription and Tenant IDs
 
@@ -94,6 +114,30 @@ You can also trigger the workflow manually through the GitHub Actions UI:
 2. Select the **Terraform CI/CD** workflow
 3. Click **Run workflow**
 4. Choose the branch and trigger the workflow
+
+## Infrastructure Components
+
+### App Service Configuration
+- Windows-based hosting
+- .NET runtime environment
+- Application Insights integration
+- Key Vault integration for secrets
+- HTTPS enforcement
+- Custom health check endpoints
+
+### SQL Database Setup
+- Two separate SQL Server instances
+  - Catalog database for product data
+  - Identity database for user management
+- Azure AD authentication enabled
+- Firewall rules preconfigured
+- Connection strings stored in Key Vault
+
+### Key Vault Features
+- Stores all sensitive information
+- Managed identity access
+- RBAC integration
+- Soft delete enabled
 
 ## Security Considerations
 
