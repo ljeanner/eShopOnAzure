@@ -14,6 +14,7 @@ env:
   IDENTITY_DB_SERVER: '' # Will be set during workflow
   CATALOG_DB_NAME: ''    # Will be set during workflow
   IDENTITY_DB_NAME: ''   # Will be set during workflow
+  ARM_USE_OIDC: true     # Enable OIDC authentication
 
 permissions:
   contents: read
@@ -37,6 +38,7 @@ jobs:
         client-id: ${{ secrets.AZURE_CLIENT_ID }}
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        enable-AzPSSession: false
 
     - name: Get Resource Group Name
       run: |
@@ -59,9 +61,16 @@ jobs:
 
     - name: Get SQL Credentials from Key Vault
       run: |
+        # Get Key Vault name
         KV_NAME=$(az keyvault list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
-        SQL_ADMIN=$(az keyvault secret show --vault-name $KV_NAME --name "sqlAdminPassword" --query "value" -o tsv)
-        echo "SQL_ADMIN_PASSWORD=$SQL_ADMIN" >> $GITHUB_ENV
+        
+        # Get SQL admin credentials from Key Vault
+        SQL_ADMIN_USERNAME=$(az keyvault secret show --vault-name $KV_NAME --name "SqlAdminUsername" --query "value" -o tsv)
+        SQL_ADMIN_PASSWORD=$(az keyvault secret show --vault-name $KV_NAME --name "SqlAdminPassword" --query "value" -o tsv)
+        
+        # Set as environment variables
+        echo "SQL_ADMIN_USERNAME=$SQL_ADMIN_USERNAME" >> $GITHUB_ENV
+        echo "SQL_ADMIN_PASSWORD=$SQL_ADMIN_PASSWORD" >> $GITHUB_ENV
 
     - name: Download and Setup sqlcmd
       run: |
@@ -101,7 +110,7 @@ jobs:
         GO
         EOF
 
-        ./sqlcmd -S ${{ env.CATALOG_DB_SERVER }} -d ${{ env.CATALOG_DB_NAME }} -U ${{ vars.SQL_ADMIN_USERNAME }} -P ${{ env.SQL_ADMIN_PASSWORD }} -i ./catalog-data.sql
+        ./sqlcmd -S ${{ env.CATALOG_DB_SERVER }} -d ${{ env.CATALOG_DB_NAME }} -U ${{ env.SQL_ADMIN_USERNAME }} -P ${{ env.SQL_ADMIN_PASSWORD }} -i ./catalog-data.sql
 
     - name: Populate Identity Database
       run: |
@@ -146,4 +155,4 @@ jobs:
         GO
         EOF
 
-        ./sqlcmd -S ${{ env.IDENTITY_DB_SERVER }} -d ${{ env.IDENTITY_DB_NAME }} -U ${{ vars.SQL_ADMIN_USERNAME }} -P ${{ env.SQL_ADMIN_PASSWORD }} -i ./identity-data.sql
+        ./sqlcmd -S ${{ env.IDENTITY_DB_SERVER }} -d ${{ env.IDENTITY_DB_NAME }} -U ${{ env.SQL_ADMIN_USERNAME }} -P ${{ env.SQL_ADMIN_PASSWORD }} -i ./identity-data.sql
