@@ -16,7 +16,6 @@ permissions:
   id-token: write # Required for OIDC authentication
 
 env:
-  AZURE_WEBAPP_NAME: ''  # Will be set during workflow
   DOTNET_VERSION: '8.0.x'
 
 jobs:
@@ -55,22 +54,36 @@ jobs:
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         enable-AzPSSession: false
 
-    - name: Get Resource Group and App Name
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: '1.5.7'
+
+    - name: Terraform Init
+      run: terraform init
+      working-directory: ./infra-tf
+
+    - name: Get Terraform Outputs
+      id: terraform
       run: |
-        RG_NAME=$(az group list --query "[?contains(name, 'rg-application')].name" -o tsv)
+        # Get resource group name from Terraform output
+        RG_NAME=$(terraform output -raw resource_group_name)
         echo "RESOURCE_GROUP=$RG_NAME" >> $GITHUB_ENV
         
-        WEBAPP_NAME=$(az webapp list -g $RG_NAME --query "[0].name" -o tsv)
+        # Get web app name from Terraform output
+        WEBAPP_NAME=$(terraform output -raw web_app_name)
         echo "AZURE_WEBAPP_NAME=$WEBAPP_NAME" >> $GITHUB_ENV
+        
+        # Get Key Vault URI from Terraform output
+        KV_URI=$(terraform output -raw key_vault_uri)
+        echo "KEY_VAULT_URI=$KV_URI" >> $GITHUB_ENV
+      working-directory: ./infra-tf
 
     - name: Get Connection Strings
       run: |
-        # Get Key Vault name
-        KV_NAME=$(az keyvault list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
-        
-        # Get connection strings from Key Vault
-        CATALOG_CONN=$(az keyvault secret show --vault-name $KV_NAME --name "CatalogConnectionString" --query "value" -o tsv)
-        IDENTITY_CONN=$(az keyvault secret show --vault-name $KV_NAME --name "IdentityConnectionString" --query "value" -o tsv)
+        # Get connection strings from Key Vault using the URI from Terraform output
+        CATALOG_CONN=$(az keyvault secret show --vault-uri ${{ env.KEY_VAULT_URI }} --name "CatalogConnectionString" --query "value" -o tsv)
+        IDENTITY_CONN=$(az keyvault secret show --vault-uri ${{ env.KEY_VAULT_URI }} --name "IdentityConnectionString" --query "value" -o tsv)
         
         # Create publish profile with connection strings for Web App
         cat << EOF > ./publish/web/appsettings.Production.json
