@@ -1,0 +1,149 @@
+name: 'SQL Data Population'
+
+on:
+  workflow_run:
+    workflows: ['Terraform CI/CD']
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch: {}
+
+env:
+  CATALOG_DB_SERVER: ''  # Will be set during workflow
+  IDENTITY_DB_SERVER: '' # Will be set during workflow
+  CATALOG_DB_NAME: ''    # Will be set during workflow
+  IDENTITY_DB_NAME: ''   # Will be set during workflow
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  populate-databases:
+    name: 'Populate SQL Databases'
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Get Resource Group Name
+      run: |
+        RG_NAME=$(az group list --query "[?contains(name, 'rg-application')].name" -o tsv)
+        echo "RESOURCE_GROUP=$RG_NAME" >> $GITHUB_ENV
+
+    - name: Get Database Information
+      run: |
+        # Get Catalog DB info
+        CATALOG_SERVER=$(az sql server list -g ${{ env.RESOURCE_GROUP }} --query "[?contains(name, 'sql-catalog')].fullyQualifiedDomainName" -o tsv)
+        CATALOG_DB=$(az sql db list -g ${{ env.RESOURCE_GROUP }} --server ${CATALOG_SERVER%%.*} --query "[?name=='db-catalog'].name" -o tsv)
+        echo "CATALOG_DB_SERVER=$CATALOG_SERVER" >> $GITHUB_ENV
+        echo "CATALOG_DB_NAME=$CATALOG_DB" >> $GITHUB_ENV
+        
+        # Get Identity DB info
+        IDENTITY_SERVER=$(az sql server list -g ${{ env.RESOURCE_GROUP }} --query "[?contains(name, 'sql-identity')].fullyQualifiedDomainName" -o tsv)
+        IDENTITY_DB=$(az sql db list -g ${{ env.RESOURCE_GROUP }} --server ${IDENTITY_SERVER%%.*} --query "[?name=='db-identity'].name" -o tsv)
+        echo "IDENTITY_DB_SERVER=$IDENTITY_SERVER" >> $GITHUB_ENV
+        echo "IDENTITY_DB_NAME=$IDENTITY_DB" >> $GITHUB_ENV
+
+    - name: Get SQL Credentials from Key Vault
+      run: |
+        KV_NAME=$(az keyvault list -g ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
+        SQL_ADMIN=$(az keyvault secret show --vault-name $KV_NAME --name "sqlAdminPassword" --query "value" -o tsv)
+        echo "SQL_ADMIN_PASSWORD=$SQL_ADMIN" >> $GITHUB_ENV
+
+    - name: Download and Setup sqlcmd
+      run: |
+        wget https://github.com/microsoft/go-sqlcmd/releases/download/v0.8.1/sqlcmd-v0.8.1-linux-x64.tar.bz2
+        tar x -f sqlcmd-v0.8.1-linux-x64.tar.bz2 -C .
+        chmod +x ./sqlcmd
+
+    - name: Populate Catalog Database
+      run: |
+        cat << EOF > ./catalog-data.sql
+        -- Create sample tables
+        CREATE TABLE Categories (
+          CategoryId INT PRIMARY KEY IDENTITY(1,1),
+          Name NVARCHAR(100) NOT NULL,
+          Description NVARCHAR(500)
+        );
+
+        CREATE TABLE Products (
+          ProductId INT PRIMARY KEY IDENTITY(1,1),
+          Name NVARCHAR(100) NOT NULL,
+          Description NVARCHAR(500),
+          Price DECIMAL(18,2) NOT NULL,
+          CategoryId INT FOREIGN KEY REFERENCES Categories(CategoryId)
+        );
+
+        -- Insert sample data
+        INSERT INTO Categories (Name, Description) VALUES
+          ('Electronics', 'Electronic devices and accessories'),
+          ('Books', 'Physical and digital books'),
+          ('Clothing', 'Apparel and accessories');
+
+        INSERT INTO Products (Name, Description, Price, CategoryId) VALUES
+          ('Smartphone', 'Latest model smartphone', 999.99, 1),
+          ('Laptop', 'High-performance laptop', 1499.99, 1),
+          ('Programming Guide', 'Comprehensive programming guide', 49.99, 2),
+          ('T-Shirt', 'Cotton casual t-shirt', 19.99, 3);
+        GO
+        EOF
+
+        ./sqlcmd -S ${{ env.CATALOG_DB_SERVER }} -d ${{ env.CATALOG_DB_NAME }} -U ${{ vars.SQL_ADMIN_USERNAME }} -P ${{ env.SQL_ADMIN_PASSWORD }} -i ./catalog-data.sql
+
+    - name: Populate Identity Database
+      run: |
+        cat << EOF > ./identity-data.sql
+        -- Create sample tables
+        CREATE TABLE Roles (
+          RoleId INT PRIMARY KEY IDENTITY(1,1),
+          Name NVARCHAR(50) NOT NULL UNIQUE
+        );
+
+        CREATE TABLE UserProfiles (
+          UserId INT PRIMARY KEY IDENTITY(1,1),
+          Email NVARCHAR(255) NOT NULL UNIQUE,
+          FirstName NVARCHAR(100),
+          LastName NVARCHAR(100),
+          CreatedDate DATETIME2 DEFAULT GETUTCDATE()
+        );
+
+        CREATE TABLE UserRoles (
+          UserId INT,
+          RoleId INT,
+          CONSTRAINT PK_UserRoles PRIMARY KEY (UserId, RoleId),
+          CONSTRAINT FK_UserRoles_Users FOREIGN KEY (UserId) REFERENCES UserProfiles(UserId),
+          CONSTRAINT FK_UserRoles_Roles FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
+        );
+
+        -- Insert sample data
+        INSERT INTO Roles (Name) VALUES
+          ('Admin'),
+          ('User'),
+          ('Manager');
+
+        INSERT INTO UserProfiles (Email, FirstName, LastName) VALUES
+          ('admin@example.com', 'Admin', 'User'),
+          ('user@example.com', 'Regular', 'User'),
+          ('manager@example.com', 'Team', 'Manager');
+
+        INSERT INTO UserRoles (UserId, RoleId) VALUES
+          (1, 1), -- Admin user has Admin role
+          (2, 2), -- Regular user has User role
+          (3, 3); -- Manager user has Manager role
+        GO
+        EOF
+
+        ./sqlcmd -S ${{ env.IDENTITY_DB_SERVER }} -d ${{ env.IDENTITY_DB_NAME }} -U ${{ vars.SQL_ADMIN_USERNAME }} -P ${{ env.SQL_ADMIN_PASSWORD }} -i ./identity-data.sql
