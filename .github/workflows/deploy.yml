@@ -41,6 +41,7 @@ jobs:
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         enable-AzPSSession: false
+        use-oidc: true
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
