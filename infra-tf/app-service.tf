@@ -51,10 +51,13 @@ resource "azurerm_windows_web_app" "webapp" {
   app_settings = merge(
     var.app_settings,
     {
-      "SCM_DO_BUILD_DURING_DEPLOYMENT" = tostring(var.scm_do_build_during_deployment)
-      "ENABLE_ORYX_BUILD"              = tostring(var.enable_oryx_build)
+      "SCM_DO_BUILD_DURING_DEPLOYMENT" = "False"
+      "ENABLE_ORYX_BUILD"              = "True"
+      "AZURE_KEY_VAULT_ENDPOINT"       =  azurerm_key_vault.kv.vault_uri
       "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.appinsights.connection_string
-      "AZURE_KEY_VAULT_ENDPOINT"       = azurerm_key_vault.kv.vault_uri
+      "AZURE_SQL_CATALOG_CONNECTION_STRING_KEY" = azurerm_key_vault_secret.catalog_connection_string.name
+      "AZURE_SQL_IDENTITY_CONNECTION_STRING_KEY" = azurerm_key_vault_secret.identity_connection_string.name
+      "WEBSITE_HTTPLOGGING_RETENTION_DAYS" = "1"
     }
   )
 
