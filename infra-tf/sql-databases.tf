@@ -83,11 +83,9 @@ resource "null_resource" "setup_catalog_db_user" {
   depends_on = [azurerm_mssql_database.catalog]
 
   provisioner "local-exec" {
-    interpreter = ["PowerShell", "-Command"]
-    command     = <<-EOT
-      $connectionString = "Server=tcp:${azurerm_mssql_server.catalog.fully_qualified_domain_name},1433;Initial Catalog=${azurerm_mssql_database.catalog.name};Persist Security Info=False;User ID=${var.sql_admin_username};Password=${var.sql_admin_password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-      
-      $query = @"
+    command = <<-EOT
+      # Creating SQL script file
+      cat > setup_catalog_user.sql << EOF
       IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '${var.app_user_name}')
       BEGIN
           DROP USER [${var.app_user_name}]
@@ -97,17 +95,13 @@ resource "null_resource" "setup_catalog_db_user" {
       GO
       ALTER ROLE db_owner ADD MEMBER [${var.app_user_name}]
       GO
-      "@
+      EOF
 
-      $conn = New-Object System.Data.SqlClient.SqlConnection($connectionString)
-      try {
-          $conn.Open()
-          $cmd = New-Object System.Data.SqlClient.SqlCommand($query, $conn)
-          $cmd.ExecuteNonQuery()
-      }
-      finally {
-          $conn.Close()
-      }
+      # Execute the SQL script using az cli
+      az sql db execute -g ${azurerm_resource_group.rg.name} -s ${azurerm_mssql_server.catalog.name} -n ${azurerm_mssql_database.catalog.name} -f setup_catalog_user.sql -u ${var.sql_admin_username} -p ${var.sql_admin_password} --connect-timeout 30
+
+      # Remove the temporary SQL file
+      rm -f setup_catalog_user.sql
     EOT
   }
 }
@@ -117,11 +111,9 @@ resource "null_resource" "setup_identity_db_user" {
   depends_on = [azurerm_mssql_database.identity]
 
   provisioner "local-exec" {
-    interpreter = ["PowerShell", "-Command"]
-    command     = <<-EOT
-      $connectionString = "Server=tcp:${azurerm_mssql_server.identity.fully_qualified_domain_name},1433;Initial Catalog=${azurerm_mssql_database.identity.name};Persist Security Info=False;User ID=${var.sql_admin_username};Password=${var.sql_admin_password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-      
-      $query = @"
+    command = <<-EOT
+      # Creating SQL script file
+      cat > setup_identity_user.sql << EOF
       IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '${var.app_user_name}')
       BEGIN
           DROP USER [${var.app_user_name}]
@@ -131,17 +123,13 @@ resource "null_resource" "setup_identity_db_user" {
       GO
       ALTER ROLE db_owner ADD MEMBER [${var.app_user_name}]
       GO
-      "@
+      EOF
 
-      $conn = New-Object System.Data.SqlClient.SqlConnection($connectionString)
-      try {
-          $conn.Open()
-          $cmd = New-Object System.Data.SqlClient.SqlCommand($query, $conn)
-          $cmd.ExecuteNonQuery()
-      }
-      finally {
-          $conn.Close()
-      }
+      # Execute the SQL script using az cli
+      az sql db execute -g ${azurerm_resource_group.rg.name} -s ${azurerm_mssql_server.identity.name} -n ${azurerm_mssql_database.identity.name} -f setup_identity_user.sql -u ${var.sql_admin_username} -p ${var.sql_admin_password} --connect-timeout 30
+
+      # Remove the temporary SQL file
+      rm -f setup_identity_user.sql
     EOT
   }
 }
