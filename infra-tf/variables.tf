@@ -103,7 +103,7 @@ variable "app_command_line" {
 variable "allowed_origins" {
   description = "Additional allowed CORS origins"
   type        = list(string)
-  default     = []
+  default     = ["https://example.com"] # Adding a default value to meet the minimum requirement
 }
 
 variable "client_affinity_enabled" {
