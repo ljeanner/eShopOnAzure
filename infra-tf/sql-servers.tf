@@ -7,6 +7,10 @@ resource "azurerm_mssql_server" "catalog" {
   administrator_login          = var.sql_admin_username
   administrator_login_password = var.sql_admin_password
 
+  identity {
+    type = "SystemAssigned"
+  }
+
   azuread_administrator {
     login_username = var.azure_ad_admin_username
     object_id      = var.azure_ad_admin_object_id
@@ -20,6 +24,10 @@ resource "azurerm_mssql_server" "identity" {
   version                      = "12.0"
   administrator_login          = var.sql_admin_username
   administrator_login_password = var.sql_admin_password
+
+  identity {
+    type = "SystemAssigned"
+  }
 
   azuread_administrator {
     login_username = var.azure_ad_admin_username
