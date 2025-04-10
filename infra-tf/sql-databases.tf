@@ -85,7 +85,7 @@ resource "null_resource" "setup_catalog_db_user" {
   provisioner "local-exec" {
     interpreter = ["PowerShell", "-Command"]
     command     = <<-EOT
-      $connectionString = "Server=tcp:${azurerm_mssql_server.catalog.fully_qualified_domain_name},1433;Initial Catalog=${var.catalog_database_name};Persist Security Info=False;User ID=${var.sql_admin_username};Password=${var.sql_admin_password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+      $connectionString = "Server=tcp:${azurerm_mssql_server.catalog.fully_qualified_domain_name},1433;Initial Catalog=${azurerm_mssql_database.catalog.name};Persist Security Info=False;User ID=${var.sql_admin_username};Password=${var.sql_admin_password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
       
       $query = @"
       IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '${var.app_user_name}')
@@ -119,7 +119,7 @@ resource "null_resource" "setup_identity_db_user" {
   provisioner "local-exec" {
     interpreter = ["PowerShell", "-Command"]
     command     = <<-EOT
-      $connectionString = "Server=tcp:${azurerm_mssql_server.identity.fully_qualified_domain_name},1433;Initial Catalog=${var.identity_database_name};Persist Security Info=False;User ID=${var.sql_admin_username};Password=${var.sql_admin_password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+      $connectionString = "Server=tcp:${azurerm_mssql_server.identity.fully_qualified_domain_name},1433;Initial Catalog=${azurerm_mssql_database.identity.name};Persist Security Info=False;User ID=${var.sql_admin_username};Password=${var.sql_admin_password};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
       
       $query = @"
       IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '${var.app_user_name}')

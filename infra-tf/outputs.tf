@@ -5,12 +5,12 @@ output "resource_group_name" {
 
 output "web_app_name" {
   description = "The name of the web app"
-  value       = azurerm_windows_web_app.webapp.name
+  value       = azurerm_linux_web_app.webapp.name
 }
 
 output "web_app_url" {
   description = "The default URL of the web app"
-  value       = "https://${azurerm_windows_web_app.webapp.default_hostname}"
+  value       = "https://${azurerm_linux_web_app.webapp.default_hostname}"
 }
 
 output "key_vault_uri" {

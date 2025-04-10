@@ -86,7 +86,8 @@ resource "azurerm_key_vault_access_policy" "webapp" {
 
   key_vault_id = azurerm_key_vault.kv.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_windows_web_app.webapp.identity[0].principal_id
+  # Using Linux web app identity (NOT Windows)
+  object_id    = azurerm_linux_web_app.webapp.identity[0].principal_id
 
   secret_permissions = [
     "Get",

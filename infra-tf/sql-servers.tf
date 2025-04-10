@@ -39,12 +39,6 @@ resource "azurerm_mssql_server" "identity" {
   }
 }
 
-# Catalog Firewall Rule allowing Azure services and all client IPs
-resource "azurerm_mssql_firewall_rule" "catalog_allow_all" {
-  name             = "AllowAllClients"
-  server_id        = azurerm_mssql_server.catalog.id
-  start_ip_address = "0.0.0.1"
-  end_ip_address   = "255.255.255.254"
-}
+# Note: Catalog Firewall Rule is defined in sql-databases.tf
 
 # Note: Database, firewall rules, and connection strings are defined in sql-databases.tf

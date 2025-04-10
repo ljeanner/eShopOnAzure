@@ -53,6 +53,18 @@ variable "app_user_password" {
   sensitive   = true
 }
 
+variable "catalog_database_name" {
+  description = "The name of the catalog database"
+  type        = string
+  default     = "db-catalog"
+}
+
+variable "identity_database_name" {
+  description = "The name of the identity database"
+  type        = string
+  default     = "db-identity"
+}
+
 variable "principal_id" {
   description = "The principal ID for the default Key Vault access policy"
   type        = string
