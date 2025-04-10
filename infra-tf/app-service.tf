@@ -3,7 +3,7 @@ resource "azurerm_service_plan" "plan" {
   name                = "plan-${random_string.suffix.result}"
   resource_group_name = azurerm_resource_group.rg.name
   location           = azurerm_resource_group.rg.location
-  os_type            = "Windows"
+  os_type            = "Linux"
   sku_name           = "B1"
 }
 
@@ -18,7 +18,7 @@ resource "azurerm_application_insights" "appinsights" {
 }
 
 # Web Application
-resource "azurerm_windows_web_app" "webapp" {
+resource "azurerm_linux_web_app" "webapp" {
   name                = "app-${random_string.suffix.result}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
@@ -27,20 +27,18 @@ resource "azurerm_windows_web_app" "webapp" {
   tags                = var.tags
 
   site_config {
-    always_on                = var.always_on
-    ftps_state              = var.ftps_state
+    always_on                = true
+    ftps_state              = "FtpsOnly" 
     minimum_tls_version     = "1.2"
     app_command_line        = var.app_command_line
     health_check_path       = var.health_check_path
-    use_32_bit_worker      = var.use_32_bit_worker_process
     
     application_stack {
-      current_stack         = "dotnet"
-      dotnet_version       = var.runtime_version
+      dotnet_version = "8.0"
     }
 
     cors {
-      allowed_origins = concat(["https://portal.azure.com", "https://ms.portal.azure.com"], var.allowed_origins)
+      allowed_origins = var.allowed_origins
     }
   }
 

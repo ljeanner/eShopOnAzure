@@ -7,7 +7,7 @@ resource "azurerm_key_vault" "kv" {
   sku_name           = "standard"
   tags               = var.tags
 
-  # Grant permissions to the current service principal
+  # Grant permissions to the current service principal - this ensures Terraform can manage the vault
   access_policy {
     tenant_id = data.azurerm_client_config.current.tenant_id
     object_id = data.azurerm_client_config.current.object_id
@@ -21,7 +21,7 @@ resource "azurerm_key_vault" "kv" {
     ]
   }
 
-  # Default access policy if principal ID is provided
+  # Only add user access policy if principal ID is provided, matching Bicep behavior
   dynamic "access_policy" {
     for_each = var.principal_id != "" ? [1] : []
     content {
