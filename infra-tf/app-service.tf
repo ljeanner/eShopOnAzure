@@ -57,6 +57,9 @@ resource "azurerm_windows_web_app" "webapp" {
       "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.appinsights.connection_string
       "AZURE_SQL_CATALOG_CONNECTION_STRING_KEY" = azurerm_key_vault_secret.catalog_connection_string.name
       "AZURE_SQL_IDENTITY_CONNECTION_STRING_KEY" = azurerm_key_vault_secret.identity_connection_string.name
+      "ASPNETCORE_ENVIRONMENT" = "Production"
+      "DOTNET_STARTUP_HOOKS" = ""
+      "ASPNETCORE_FORWARDEDHEADERS_ENABLED" = "true"
     }
   )
 
