@@ -55,8 +55,8 @@ resource "azurerm_windows_web_app" "webapp" {
       "ENABLE_ORYX_BUILD"              = "True"
       "AZURE_KEY_VAULT_ENDPOINT"       =  azurerm_key_vault.kv.vault_uri
       "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.appinsights.connection_string
-      "AZURE_SQL_CATALOG_CONNECTION_STRING_KEY" = azurerm_key_vault_secret.catalog_connection_string.name
-      "AZURE_SQL_IDENTITY_CONNECTION_STRING_KEY" = azurerm_key_vault_secret.identity_connection_string.name
+      "AZURE_SQL_CATALOG_CONNECTION_STRING_KEY" = "AZURE-SQL-CATALOG-CONNECTION-STRING"
+      "AZURE_SQL_IDENTITY_CONNECTION_STRING_KEY" = "AZURE-SQL-IDENTITY-CONNECTION-STRING"
       "ASPNETCORE_ENVIRONMENT" = "Production"
       "DOTNET_STARTUP_HOOKS" = ""
       "ASPNETCORE_FORWARDEDHEADERS_ENABLED" = "true"
