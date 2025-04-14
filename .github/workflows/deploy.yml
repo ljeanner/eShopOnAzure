@@ -1,4 +1,4 @@
-name: 'Infrastructure and Application Deployment'
+name: 'Infrastructure and Application Deployment on Azure with Terraform'
 
 on:
   push:
@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'main'
 
 permissions:
   contents: read

@@ -1,4 +1,4 @@
-name: 'Terraform Infrastructure Deployment'
+name: 'Ceate Infra on Azure with Terraform' 
 
 on:
   push:
