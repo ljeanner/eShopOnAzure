@@ -102,20 +102,6 @@ variable "app_settings" {
   }
 }
 
-# VM Admin Credentials
-variable "admin_username" {
-  description = "Administrator username for the virtual machine"
-  type        = string
-  default     = "vmadmin"
-  sensitive   = true
-}
-
-variable "admin_password" {
-  description = "Administrator password for the virtual machine"
-  type        = string
-  sensitive   = true
-}
-
 # App Service Additional Variables
 variable "app_command_line" {
   description = "The startup command for the web app"
