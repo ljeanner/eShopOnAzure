@@ -126,7 +126,7 @@ resource "azurerm_resource_group_template_deployment" "identity_user_setup" {
             "secureValue": "${var.app_user_password}"
           }
         ],
-        "scriptContent": "az sql db user create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --name \"${var.app_user_name}\" --password \"${var.app_user_password}\" && az sql db role create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --name \"db_owner\" --members \"${var.app_user_name}\" || echo \"Role may already exist\""
+        "scriptContent": "az sql db user create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --name \"${var.app_user_name}\" --password \"${var.app_user_password}\" && sqlcmd -S ${azurerm_mssql_server.identity.fully_qualified_domain_name} -d ${azurerm_mssql_database.identity.name} -U ${var.sql_admin_username} -P ${var.sql_admin_password} -Q \"ALTER ROLE db_owner ADD MEMBER [${var.app_user_name}];\" -I || echo \"Role assignment may already exist\""
       }
     }
   ]
