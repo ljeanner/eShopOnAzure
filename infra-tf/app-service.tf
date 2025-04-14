@@ -58,6 +58,7 @@ resource "azurerm_linux_web_app" "webapp" {
       "ASPNETCORE_ENVIRONMENT" = "Production"
       "DOTNET_STARTUP_HOOKS" = ""
       "ASPNETCORE_FORWARDEDHEADERS_ENABLED" = "true"
+      "RUN_MIGRATIONS" = "true"
     }
   )
 
