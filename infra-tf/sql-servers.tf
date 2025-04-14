@@ -61,14 +61,6 @@ resource "azurerm_resource_group_template_deployment" "catalog_user_setup" {
         "retentionInterval": "P1D",
         "environmentVariables": [
           {
-            "name": "DBSERVER",
-            "value": "${azurerm_mssql_server.catalog.fully_qualified_domain_name}"
-          },
-          {
-            "name": "DBNAME",
-            "value": "${azurerm_mssql_database.catalog.name}"
-          },
-          {
             "name": "SQLADMIN",
             "value": "${var.sql_admin_username}"
           },
@@ -85,7 +77,7 @@ resource "azurerm_resource_group_template_deployment" "catalog_user_setup" {
             "secureValue": "${var.app_user_password}"
           }
         ],
-        "scriptContent": "wget https://github.com/microsoft/go-sqlcmd/releases/download/v0.8.1/sqlcmd-v0.8.1-linux-x64.tar.bz2 && tar x -f sqlcmd-v0.8.1-linux-x64.tar.bz2 -C . && echo 'IF EXISTS (SELECT * FROM sys.database_principals WHERE name = \"${var.app_user_name}\") DROP USER ${var.app_user_name}; CREATE USER ${var.app_user_name} WITH PASSWORD = \"${var.app_user_password}\"; ALTER ROLE db_owner ADD MEMBER ${var.app_user_name};' > ./init.sql && ./sqlcmd -S $DBSERVER -d $DBNAME -U $SQLADMIN -P $SQLPASSWORD -i ./init.sql"
+        "scriptContent": "az sql db user create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.catalog.name} --database ${azurerm_mssql_database.catalog.name} --user \"${var.app_user_name}\" --password \"${var.app_user_password}\" && az sql db role-assignment create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.catalog.name} --database ${azurerm_mssql_database.catalog.name} --user \"${var.app_user_name}\" --role db_owner"
       }
     }
   ]
@@ -118,14 +110,6 @@ resource "azurerm_resource_group_template_deployment" "identity_user_setup" {
         "retentionInterval": "P1D",
         "environmentVariables": [
           {
-            "name": "DBSERVER",
-            "value": "${azurerm_mssql_server.identity.fully_qualified_domain_name}"
-          },
-          {
-            "name": "DBNAME",
-            "value": "${azurerm_mssql_database.identity.name}"
-          },
-          {
             "name": "SQLADMIN",
             "value": "${var.sql_admin_username}"
           },
@@ -142,7 +126,7 @@ resource "azurerm_resource_group_template_deployment" "identity_user_setup" {
             "secureValue": "${var.app_user_password}"
           }
         ],
-        "scriptContent": "wget https://github.com/microsoft/go-sqlcmd/releases/download/v0.8.1/sqlcmd-v0.8.1-linux-x64.tar.bz2 && tar x -f sqlcmd-v0.8.1-linux-x64.tar.bz2 -C . && echo 'IF EXISTS (SELECT * FROM sys.database_principals WHERE name = \"${var.app_user_name}\") DROP USER ${var.app_user_name}; CREATE USER ${var.app_user_name} WITH PASSWORD = \"${var.app_user_password}\"; ALTER ROLE db_owner ADD MEMBER ${var.app_user_name};' > ./init.sql && ./sqlcmd -S $DBSERVER -d $DBNAME -U $SQLADMIN -P $SQLPASSWORD -i ./init.sql"
+        "scriptContent": "az sql db user create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --user \"${var.app_user_name}\" --password \"${var.app_user_password}\" && az sql db role-assignment create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --user \"${var.app_user_name}\" --role db_owner"
       }
     }
   ]
