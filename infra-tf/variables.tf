@@ -132,3 +132,15 @@ variable "client_affinity_enabled" {
   type        = bool
   default     = false
 }
+
+variable "scm_do_build_during_deployment" {
+  description = "Whether to build during deployment for App Service"
+  type        = bool
+  default     = false
+}
+
+variable "ftps_state" {
+  description = "The FTP/S state for the App Service"
+  type        = string
+  default     = "FtpsOnly"
+}
