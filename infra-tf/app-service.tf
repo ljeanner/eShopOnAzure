@@ -51,7 +51,7 @@ resource "azurerm_linux_web_app" "webapp" {
     {
       "SCM_DO_BUILD_DURING_DEPLOYMENT" = "False"
       "ENABLE_ORYX_BUILD"              = "True"
-      "AZURE_KEY_VAULT_ENDPOINT"       =  azurerm_key_vault.kv.vault_uri
+      "AZURE_KEY_VAULT_ENDPOINT"       = azurerm_key_vault.kv.vault_uri
       "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.appinsights.connection_string
       "AZURE_SQL_CATALOG_CONNECTION_STRING_KEY" = "CatalogConnectionString"
       "AZURE_SQL_IDENTITY_CONNECTION_STRING_KEY" = "IdentityConnectionString"
