@@ -134,7 +134,7 @@ resource "azurerm_resource_group_template_deployment" "identity_user_setup" {
             "value": "${azurerm_mssql_database.identity.name}"
           }
         ],
-        "scriptContent": "az sql db user create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --name \"${var.app_user_name}\" --password \"${var.app_user_password}\" && az sql query --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --query \"ALTER ROLE db_owner ADD MEMBER [${var.app_user_name}];\""
+        "scriptContent": "az sql db user create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --name \"${var.app_user_name}\" --password \"${var.app_user_password}\" && echo \"SET NOCOUNT ON; ALTER ROLE db_owner ADD MEMBER [${var.app_user_name}];\" > setup.sql && az sql db run-command --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --name ${azurerm_mssql_database.identity.name} --command-type SqlCmd --command-text \"$(< setup.sql)\""
       }
     }
   ]
