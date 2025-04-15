@@ -124,9 +124,17 @@ resource "azurerm_resource_group_template_deployment" "identity_user_setup" {
           {
             "name": "APPUSERPASSWORD",
             "secureValue": "${var.app_user_password}"
+          },
+          {
+            "name": "DBSERVER",
+            "value": "${azurerm_mssql_server.identity.fully_qualified_domain_name}"
+          },
+          {
+            "name": "DATABASE",
+            "value": "${azurerm_mssql_database.identity.name}"
           }
         ],
-        "scriptContent": "az sql db user create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --name \"${var.app_user_name}\" --password \"${var.app_user_password}\" && az sql db role create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --name \"db_owner\" --members \"${var.app_user_name}\" || echo \"Role may already exist\""
+        "scriptContent": "az sql db user create --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --database ${azurerm_mssql_database.identity.name} --name \"${var.app_user_name}\" --password \"${var.app_user_password}\" && echo \"SET NOCOUNT ON; ALTER ROLE db_owner ADD MEMBER [${var.app_user_name}];\" > setup.sql && az sql db run-command --resource-group ${azurerm_resource_group.rg.name} --server ${azurerm_mssql_server.identity.name} --name ${azurerm_mssql_database.identity.name} --command-type SqlCmd --command-text \"$(< setup.sql)\""
       }
     }
   ]
